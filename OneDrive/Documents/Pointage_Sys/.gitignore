@@ -1,0 +1,28 @@
+# Laravel
+backend/vendor/
+backend/.env
+backend/storage/logs/
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/bootstrap/cache/
+backend/node_modules/
+
+# React (future)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Python (future)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
