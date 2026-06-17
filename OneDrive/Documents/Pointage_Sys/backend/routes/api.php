@@ -12,7 +12,8 @@ Route::post('/sync/logs', [SyncController::class, 'receive'])
     ->middleware('sync.secret');
 
 // --- API interne du Dashboard (pas d'auth pour l'instant) ---
-Route::get('/dashboard/today', [DashboardController::class, 'today']);
+Route::get('/dashboard/today',     [DashboardController::class, 'today']);
+Route::get('/dashboard/live-feed', [DashboardController::class, 'liveFeed']);
 
 Route::apiResource('employees', EmployeeController::class);
 Route::apiResource('schedules', ScheduleController::class);

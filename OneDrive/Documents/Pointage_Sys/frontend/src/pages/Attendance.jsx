@@ -3,11 +3,6 @@ import { Search, Filter } from 'lucide-react'
 import api from '../api/client'
 import Badge from '../components/Badge'
 
-const MOCK = [
-  { id: 1, employee: { first_name: 'Karim',   last_name: 'Benali'  }, work_date: '2026-06-17', check_in: '08:31:00', check_out: '17:28:00', worked_minutes: 537, status: 'present' },
-  { id: 2, employee: { first_name: 'Amina',   last_name: 'Tazi'    }, work_date: '2026-06-17', check_in: '08:47:00', check_out: '17:35:00', worked_minutes: 528, status: 'late' },
-  { id: 3, employee: { first_name: 'Youssef', last_name: 'El Kari' }, work_date: '2026-06-17', check_in: null,       check_out: null,       worked_minutes: null, status: 'absent' },
-]
 
 function fmtMinutes(m) {
   if (!m) return '—'
@@ -23,7 +18,7 @@ export default function Attendance() {
   const load = () =>
     api.get('/attendance', { params: { from, to, employee: search || undefined } })
       .then(r => setRows(r.data.data ?? r.data))
-      .catch(() => setRows(MOCK))
+      .catch(() => setRows([]))
 
   useEffect(() => { load() }, [from, to])
 
