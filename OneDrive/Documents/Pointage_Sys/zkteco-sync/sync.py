@@ -1,14 +1,17 @@
+# -*- coding: utf-8 -*-
 """
-ZKPointe — Script de synchronisation ZKTeco → Laravel
-------------------------------------------------------
-Tourne en arrière-plan sur le PC du réseau local.
-Se connecte à la pointeuse toutes les SYNC_INTERVAL secondes,
-récupère les nouveaux pointages et les envoie à l'API Laravel.
+ZKPointe - Script de synchronisation ZKTeco -> Laravel
+Tourne en arriere-plan sur le PC du reseau local.
+Se connecte a la pointeuse toutes les SYNC_INTERVAL secondes,
+recupere les nouveaux pointages et les envoie a l'API Laravel.
 """
 
 import os
+import sys
 import time
 import logging
+
+sys.stdout.reconfigure(encoding='utf-8')
 from datetime import datetime
 
 import requests

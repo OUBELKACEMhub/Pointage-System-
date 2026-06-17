@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('zkteco_uid')->index();
             $table->foreignId('employee_id')->nullable()->constrained('employees')->nullOnDelete();
-            $table->timestamp('punched_at');
+            $table->dateTime('punched_at');
             $table->timestamps();
 
             $table->unique(['zkteco_uid', 'punched_at']);

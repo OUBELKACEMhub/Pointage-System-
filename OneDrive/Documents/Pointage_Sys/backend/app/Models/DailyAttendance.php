@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DailyAttendance extends Model
 {
+    protected $table = 'daily_attendance';
+
     protected $fillable = [
         'employee_id', 'work_date', 'check_in', 'check_out', 'worked_minutes', 'status',
     ];
