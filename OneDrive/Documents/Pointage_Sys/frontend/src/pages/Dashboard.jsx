@@ -58,7 +58,7 @@ export default function Dashboard() {
     let es, iv
     fetchAll().then(() => {
       es = connectSSE(0)
-      iv = setInterval(refreshStats, 10000)
+      iv = setInterval(refreshStats, 5000)
     })
     return () => { es?.close(); clearInterval(iv) }
   }, [])
@@ -90,7 +90,7 @@ export default function Dashboard() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'16px' }}>
         {loading ? [1,2,3,4].map(i=><div key={i} style={{ ...card(), height:'110px', opacity:0.4 }}/>)
           : <>
-            <StatCard label="Total Employés"  value={stats?.total_employees??'—'} color="blue"  icon={Users}     sub="enregistrés"/>
+            <StatCard label="Total Employés"  value={stats?.total??'—'}           color="blue"  icon={Users}     sub="enregistrés"/>
             <StatCard label="Présents"         value={stats?.present??'—'}         color="green" icon={UserCheck} sub="aujourd'hui"/>
             <StatCard label="En retard"        value={stats?.late??'—'}            color="amber" icon={Clock}     sub="aujourd'hui"/>
             <StatCard label="Absents"          value={stats?.absent??'—'}          color="red"   icon={UserX}     sub="aujourd'hui"/>
@@ -129,10 +129,10 @@ export default function Dashboard() {
                     <tr key={row.id} style={{ borderBottom:'1px solid '+t.border, background:isNew?(dark?'rgba(22,163,74,0.08)':'rgba(22,163,74,0.04)'):'transparent', transition:'background 0.5s' }}>
                       <td style={{ padding:'12px 20px' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                          <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:colorFor(row.employee_name||''), display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:'12px', flexShrink:0 }}>
-                            {initials(row.employee_name||'')}
+                          <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:colorFor(row.full_name||''), display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:'12px', flexShrink:0 }}>
+                            {initials(row.full_name||'')}
                           </div>
-                          <span style={{ fontSize:'13px', fontWeight:500, color:t.text }}>{row.employee_name||'Inconnu'}</span>
+                          <span style={{ fontSize:'13px', fontWeight:500, color:t.text }}>{row.full_name||'Inconnu'}</span>
                           {isNew && <span style={{ padding:'1px 7px', borderRadius:'10px', background:'rgba(22,163,74,0.12)', color:t.green, fontSize:'10px', fontWeight:700 }}>NOUVEAU</span>}
                         </div>
                       </td>
