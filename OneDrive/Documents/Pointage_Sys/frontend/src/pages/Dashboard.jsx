@@ -1,169 +1,149 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Users, UserCheck, Clock, UserX, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Users, UserCheck, Clock, UserX, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import api from '../api/client'
 import StatCard from '../components/StatCard'
+import { useTheme } from '../context/ThemeContext'
 
-function fmtTime(iso) {
-  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+const fmtTime = s => s ? String(s).replace('T',' ').slice(11,16) : '--:--'
+const fmtDate = s => {
+  if (!s) return ''
+  const [y,m,d] = String(s).slice(0,10).split('-')
+  const mo = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc']
+  return d + ' ' + (mo[+m-1]||'')
 }
-function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
-}
-function initials(name) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-}
-
-const avatarColors = ['#6366f1','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444']
-const colorFor = (name) => avatarColors[name.charCodeAt(0) % avatarColors.length]
+const initials = n => (n||'').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?'
+const COLORS = ['#6366f1','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444']
+const colorFor = n => COLORS[(n||'').charCodeAt(0)%COLORS.length]
 
 export default function Dashboard() {
-  const [stats,   setStats]   = useState(null)
-  const [feed,    setFeed]    = useState([])
-  const [loading, setLoading] = useState(true)
-  const [online,  setOnline]  = useState(true)
-  const [lastSync,setLastSync]= useState(null)
+  const { t, dark } = useTheme()
+  const [stats,    setStats]    = useState(null)
+  const [feed,     setFeed]     = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [online,   setOnline]   = useState(true)
+  const [lastSync, setLastSync] = useState(null)
+  const [newIds,   setNewIds]   = useState(new Set())
+  const esRef = useRef(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [s, f] = await Promise.all([
-        api.get('/dashboard/today'),
-        api.get('/dashboard/live-feed'),
-      ])
-      setStats(s.data)
-      setFeed(f.data)
-      setOnline(true)
-      setLastSync(new Date())
-    } catch {
-      setOnline(false)
-    } finally {
-      setLoading(false)
-    }
+      const [s, f] = await Promise.all([api.get('/dashboard/today'), api.get('/dashboard/live-feed')])
+      setStats(s.data); setFeed(f.data); setOnline(true); setLastSync(new Date())
+    } catch { setOnline(false) } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => {
-    fetchAll()
-    const t = setInterval(fetchAll, 30000)
-    return () => clearInterval(t)
-  }, [fetchAll])
+  const refreshStats = useCallback(async () => {
+    try { const s = await api.get('/dashboard/today'); setStats(s.data); setLastSync(new Date()) } catch {}
+  }, [])
 
-  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const connectSSE = useCallback((lastId) => {
+    if (esRef.current) esRef.current.close()
+    const token = localStorage.getItem('zk_token')
+    if (!token) return null
+    const es = new EventSource(`/api/dashboard/stream?token=${encodeURIComponent(token)}&last_id=${lastId}`)
+    esRef.current = es
+    es.addEventListener('punch', e => {
+      const punch = JSON.parse(e.data)
+      setFeed(prev => prev.some(p=>p.id===punch.id) ? prev : [punch,...prev].slice(0,20))
+      setNewIds(prev => new Set([...prev, punch.id]))
+      setTimeout(() => setNewIds(prev => { const n=new Set(prev); n.delete(punch.id); return n }), 3000)
+      refreshStats()
+    })
+    es.onerror = () => setOnline(false)
+    return es
+  }, [refreshStats])
+
+  useEffect(() => {
+    let es, iv
+    fetchAll().then(() => {
+      es = connectSSE(0)
+      iv = setInterval(refreshStats, 10000)
+    })
+    return () => { es?.close(); clearInterval(iv) }
+  }, [])
+
+  const card = (extra={}) => ({ background:t.surface, border:'1px solid '+t.border, borderRadius:'14px', ...extra })
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})
 
   return (
-    <div className="space-y-8">
-
+    <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <h2 className="text-3xl font-bold text-white">Tableau de bord</h2>
-          <p className="text-slate-400 mt-1 capitalize">{today}</p>
+          <h1 style={{ fontSize:'22px', fontWeight:700, color:t.text, margin:0, letterSpacing:'-0.5px' }}>Tableau de bord</h1>
+          <p style={{ color:t.textMuted, fontSize:'13px', marginTop:'4px', textTransform:'capitalize' }}>{dateStr}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-            style={{ background: online ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: online ? '#34d399' : '#f87171' }}>
-            {online ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {online ? 'API connectée' : 'Hors ligne'}
+        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'6px', padding:'6px 12px', borderRadius:'8px', background:online?'rgba(22,163,74,0.08)':'rgba(220,38,38,0.08)', border:'1px solid '+(online?'rgba(22,163,74,0.2)':'rgba(220,38,38,0.2)') }}>
+            {online ? <Wifi size={13} color={t.green}/> : <WifiOff size={13} color={t.red}/>}
+            <span style={{ fontSize:'12px', fontWeight:600, color:online?t.green:t.red }}>{online?'En ligne':'Hors ligne'}</span>
           </div>
-          <button onClick={fetchAll}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white transition-all"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            {lastSync ? fmtTime(lastSync) : 'Actualiser'}
+          <button onClick={fetchAll} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'7px 14px', borderRadius:'8px', background:t.surface, border:'1px solid '+t.border, color:t.textMuted, fontSize:'12px', fontWeight:500, cursor:'pointer' }}>
+            <RefreshCw size={13}/> Actualiser
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
-        <StatCard label="Total Employés" value={stats?.total}   color="blue"   icon={Users} />
-        <StatCard label="Présents"        value={stats?.present} color="green"  icon={UserCheck} />
-        <StatCard label="En retard"       value={stats?.late}    color="yellow" icon={Clock} />
-        <StatCard label="Absents"         value={stats?.absent}  color="red"    icon={UserX} />
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'16px' }}>
+        {loading ? [1,2,3,4].map(i=><div key={i} style={{ ...card(), height:'110px', opacity:0.4 }}/>)
+          : <>
+            <StatCard label="Total Employés"  value={stats?.total_employees??'—'} color="blue"  icon={Users}     sub="enregistrés"/>
+            <StatCard label="Présents"         value={stats?.present??'—'}         color="green" icon={UserCheck} sub="aujourd'hui"/>
+            <StatCard label="En retard"        value={stats?.late??'—'}            color="amber" icon={Clock}     sub="aujourd'hui"/>
+            <StatCard label="Absents"          value={stats?.absent??'—'}          color="red"   icon={UserX}     sub="aujourd'hui"/>
+          </>
+        }
       </div>
 
-      {/* Attendance bar */}
-      {stats && stats.total > 0 && (
-        <div className="rounded-2xl p-5"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-slate-300">Taux de présence aujourd'hui</p>
-            <p className="text-sm font-bold text-white">
-              {Math.round(((stats.present + stats.late) / stats.total) * 100)}%
-            </p>
+      {/* Live feed */}
+      <div style={card({overflow:'hidden'})}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid '+t.border, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+            <h2 style={{ fontSize:'15px', fontWeight:600, color:t.text, margin:0 }}>Pointages en direct</h2>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'2px 8px', borderRadius:'20px', background:'rgba(22,163,74,0.1)', color:t.green, fontSize:'11px', fontWeight:600 }}>
+              <span style={{ width:'5px', height:'5px', borderRadius:'50%', background:t.green }}/>
+              LIVE
+            </span>
           </div>
-          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${((stats.present + stats.late) / stats.total) * 100}%`,
-                background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
-              }} />
-          </div>
-          <div className="flex gap-4 mt-3">
-            {[
-              { label: 'Présents', value: stats.present, color: '#34d399' },
-              { label: 'En retard', value: stats.late,   color: '#fbbf24' },
-              { label: 'Absents',  value: stats.absent,  color: '#f87171' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-1.5 text-xs text-slate-400">
-                <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                {item.label} : <span className="font-semibold text-white">{item.value}</span>
-              </div>
-            ))}
-          </div>
+          {lastSync && <span style={{ fontSize:'11px', color:t.textFaint }}>Sync {lastSync.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>}
         </div>
-      )}
-
-      {/* Live Feed */}
-      <div className="rounded-2xl overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="px-6 py-4 flex items-center justify-between"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400 absolute inset-0 animate-ping opacity-60" />
-            </div>
-            <h3 className="font-semibold text-white">Flux de pointages — ZKTeco</h3>
-          </div>
-          <span className="text-xs font-medium px-3 py-1 rounded-full"
-            style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-            {feed.length} pointage(s)
-          </span>
-        </div>
-
-        {loading && feed.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Connexion à la base de données…</p>
-          </div>
-        ) : feed.length === 0 ? (
-          <div className="px-6 py-12 text-center text-slate-500 text-sm">
-            Aucun pointage enregistré.
-          </div>
+        {feed.length===0 ? (
+          <div style={{ padding:'48px', textAlign:'center', color:t.textFaint, fontSize:'14px' }}>Aucun pointage aujourd'hui</div>
         ) : (
-          <ul>
-            {feed.map((entry, i) => (
-              <li key={entry.id}
-                className="px-6 py-3.5 flex items-center gap-4 transition-colors hover:bg-white/[0.02]"
-                style={{ borderBottom: i < feed.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                {/* Avatar */}
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ background: colorFor(entry.full_name) }}>
-                  {initials(entry.full_name)}
-                </div>
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white text-sm truncate">{entry.full_name}</p>
-                  <p className="text-xs text-slate-500 truncate">{entry.department ?? 'Département non défini'}</p>
-                </div>
-                {/* Time */}
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-white">{fmtTime(entry.punched_at)}</p>
-                  <p className="text-xs text-slate-500">{fmtDate(entry.punched_at)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom:'1px solid '+t.border }}>
+                  {['Employé','Heure','Date'].map(h=>(
+                    <th key={h} style={{ padding:'10px 20px', textAlign:'left', fontSize:'11px', fontWeight:700, color:t.textFaint, textTransform:'uppercase', letterSpacing:'0.05em' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {feed.map(row=>{
+                  const isNew = newIds.has(row.id)
+                  return (
+                    <tr key={row.id} style={{ borderBottom:'1px solid '+t.border, background:isNew?(dark?'rgba(22,163,74,0.08)':'rgba(22,163,74,0.04)'):'transparent', transition:'background 0.5s' }}>
+                      <td style={{ padding:'12px 20px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                          <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:colorFor(row.employee_name||''), display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:'12px', flexShrink:0 }}>
+                            {initials(row.employee_name||'')}
+                          </div>
+                          <span style={{ fontSize:'13px', fontWeight:500, color:t.text }}>{row.employee_name||'Inconnu'}</span>
+                          {isNew && <span style={{ padding:'1px 7px', borderRadius:'10px', background:'rgba(22,163,74,0.12)', color:t.green, fontSize:'10px', fontWeight:700 }}>NOUVEAU</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding:'12px 20px', fontSize:'13px', fontWeight:600, color:t.primary, fontVariantNumeric:'tabular-nums' }}>{fmtTime(row.punched_at)}</td>
+                      <td style={{ padding:'12px 20px', fontSize:'12px', color:t.textMuted }}>{fmtDate(row.punched_at)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

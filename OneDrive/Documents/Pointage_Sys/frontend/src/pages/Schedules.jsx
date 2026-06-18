@@ -1,170 +1,128 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Clock } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Clock } from 'lucide-react'
 import api from '../api/client'
+import { useTheme } from '../context/ThemeContext'
 
-const EMPTY = { name: 'Horaire standard', start_time: '08:30', end_time: '17:30', tolerance_minutes: 15, is_active: true }
-const cardStyle = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }
-const inputStyle = {
-  width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '12px', padding: '10px 14px', color: '#fff', fontSize: '14px', outline: 'none',
-}
+const EMPTY = { name:'Horaire standard', start_time:'08:30', end_time:'17:30', tolerance_minutes:15, is_active:true }
 
 export default function Schedules() {
+  const { t } = useTheme()
   const [schedules, setSchedules] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [form,      setForm]      = useState(EMPTY)
   const [editing,   setEditing]   = useState(null)
   const [error,     setError]     = useState('')
 
-  const load = () => api.get('/schedules').then(r => setSchedules(r.data)).catch(() => {})
-  useEffect(() => { load() }, [])
+  const load = () => api.get('/schedules').then(r=>setSchedules(r.data)).catch(()=>{})
+  useEffect(()=>{ load() },[])
 
   const openAdd  = () => { setForm(EMPTY); setEditing(null); setError(''); setShowModal(true) }
-  const openEdit = (s) => { setForm({ ...s, start_time: s.start_time?.slice(0, 5), end_time: s.end_time?.slice(0, 5) }); setEditing(s.id); setError(''); setShowModal(true) }
+  const openEdit = s => { setForm({...s,start_time:s.start_time?.slice(0,5),end_time:s.end_time?.slice(0,5)}); setEditing(s.id); setError(''); setShowModal(true) }
   const save = async () => {
     try {
-      editing ? await api.put(`/schedules/${editing}`, form) : await api.post('/schedules', form)
+      editing ? await api.put(`/schedules/${editing}`,form) : await api.post('/schedules',form)
       setShowModal(false); load()
-    } catch (e) { setError(e.response?.data?.message ?? 'Erreur') }
+    } catch(e){ setError(e.response?.data?.message??'Erreur') }
   }
-  const remove = async (id) => {
-    if (!confirm('Supprimer ?')) return
-    await api.delete(`/schedules/${id}`).catch(() => {})
+  const remove = async id => {
+    if(!confirm('Supprimer cet horaire ?')) return
+    await api.delete(`/schedules/${id}`).catch(()=>{})
     load()
   }
 
+  const card = (extra={}) => ({ background:t.surface, border:'1px solid '+t.border, borderRadius:'14px', ...extra })
+  const inp  = (extra={}) => ({ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:'8px', border:'1.5px solid '+t.border, background:t.bg, color:t.text, fontSize:'13px', outline:'none', ...extra })
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <h2 className="text-3xl font-bold text-white">Gestion des Horaires</h2>
-          <p className="text-slate-400 mt-1">Configurez les plages de travail et la tolérance de retard</p>
+          <h1 style={{ fontSize:'22px', fontWeight:700, color:t.text, margin:0, letterSpacing:'-0.5px' }}>Gestion des Horaires</h1>
+          <p style={{ color:t.textMuted, fontSize:'13px', marginTop:'4px' }}>Configurez les plages de travail et la tolérance</p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white hover:scale-105 transition-all"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-          <Plus size={16} /> Ajouter un horaire
+        <button onClick={openAdd} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 18px', borderRadius:'10px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', color:'#fff', fontSize:'13px', fontWeight:600, cursor:'pointer' }}>
+          <Plus size={15}/> Ajouter
         </button>
       </div>
 
-      <div className="space-y-4">
-        {schedules.map(s => (
-          <div key={s.id} className="rounded-2xl p-6 flex items-center justify-between group transition-all hover:border-indigo-500/30"
-            style={cardStyle}>
-            <div className="flex items-center gap-5">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(99,102,241,0.15)' }}>
-                <Clock size={22} className="text-indigo-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <p className="font-bold text-white text-lg">{s.name}</p>
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                    style={s.is_active
-                      ? { background: 'rgba(16,185,129,0.15)', color: '#34d399' }
-                      : { background: 'rgba(100,116,139,0.15)', color: '#64748b' }}>
-                    {s.is_active ? 'Actif' : 'Inactif'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-slate-300">
-                    <span className="text-slate-500">Début : </span>
-                    <span className="font-mono font-semibold">{s.start_time?.slice(0, 5)}</span>
-                  </span>
-                  <span className="text-slate-600">→</span>
-                  <span className="text-slate-300">
-                    <span className="text-slate-500">Fin : </span>
-                    <span className="font-mono font-semibold">{s.end_time?.slice(0, 5)}</span>
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                    style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
-                    Tolérance : {s.tolerance_minutes} min
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => openEdit(s)}
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                <Pencil size={15} />
-              </button>
-              <button onClick={() => remove(s.id)}
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>
-                <Trash2 size={15} />
-              </button>
-            </div>
-          </div>
-        ))}
-        {schedules.length === 0 && (
-          <div className="rounded-2xl py-12 text-center text-slate-500" style={cardStyle}>
-            Aucun horaire configuré
-          </div>
-        )}
-      </div>
-
-      {/* Info box */}
-      <div className="rounded-xl p-4 text-sm flex items-start gap-3"
-        style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
-        <span className="text-lg">💡</span>
-        <p>Un employé arrivant dans les <strong>{schedules[0]?.tolerance_minutes ?? 15} premières minutes</strong> après l'heure de début est marqué <strong>Présent</strong>. Au-delà, il est marqué <strong>En retard</strong>.</p>
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1e1b4b, #0f172a)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 className="font-bold text-white text-lg">{editing ? 'Modifier' : 'Nouvel'} horaire</h3>
-              <button onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white"
-                style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <X size={16} />
-              </button>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              {error && <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>{error}</div>}
-              <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Nom de l'horaire</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Heure début</label>
-                  <input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} style={inputStyle} />
+      {schedules.length===0 ? (
+        <div style={card({ padding:'48px', textAlign:'center', color:t.textFaint })}>
+          <Clock size={32} style={{ margin:'0 auto 12px', display:'block', opacity:0.3 }}/>
+          Aucun horaire configuré
+        </div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+          {schedules.map(s=>(
+            <div key={s.id} style={card({ padding:'20px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px', transition:'box-shadow 0.2s' })}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.08)'}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
+              <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
+                <div style={{ width:'44px', height:'44px', borderRadius:'10px', background:t.primaryBg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <Clock size={20} color={t.primary}/>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1.5">Heure fin</label>
-                  <input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} style={inputStyle} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1.5">Tolérance (minutes)</label>
-                <input type="number" min={0} max={60} value={form.tolerance_minutes}
-                  onChange={e => setForm(f => ({ ...f, tolerance_minutes: +e.target.value }))} style={inputStyle} />
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input type="checkbox" className="sr-only" checked={form.is_active}
-                    onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-                  <div className="w-10 h-5 rounded-full transition-colors" style={{ background: form.is_active ? '#6366f1' : 'rgba(255,255,255,0.1)' }}>
-                    <div className="w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all" style={{ left: form.is_active ? '22px' : '2px' }} />
+                  <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'4px' }}>
+                    <span style={{ fontSize:'15px', fontWeight:600, color:t.text }}>{s.name}</span>
+                    <span style={{ padding:'2px 8px', borderRadius:'20px', fontSize:'11px', fontWeight:600, background:s.is_active?t.badge.present.bg:'rgba(100,116,139,0.1)', color:s.is_active?t.green:'#64748b' }}>
+                      {s.is_active?'Actif':'Inactif'}
+                    </span>
+                  </div>
+                  <div style={{ display:'flex', gap:'16px', fontSize:'13px', color:t.textMuted }}>
+                    <span>Entrée: <strong style={{ color:t.text }}>{s.start_time?.slice(0,5)}</strong></span>
+                    <span>Sortie: <strong style={{ color:t.text }}>{s.end_time?.slice(0,5)}</strong></span>
+                    <span>Tolérance: <strong style={{ color:t.text }}>{s.tolerance_minutes} min</strong></span>
                   </div>
                 </div>
-                <span className="text-sm text-slate-300">Horaire actif</span>
-              </label>
+              </div>
+              <div style={{ display:'flex', gap:'8px', flexShrink:0 }}>
+                <button onClick={()=>openEdit(s)} style={{ padding:'7px 14px', borderRadius:'8px', background:t.primaryBg, border:'1px solid '+t.primaryBorder, color:t.primary, fontSize:'12px', fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+                  <Pencil size={13}/> Modifier
+                </button>
+                <button onClick={()=>remove(s.id)} style={{ padding:'7px 14px', borderRadius:'8px', background:t.badge.absent.bg, border:'1px solid rgba(220,38,38,0.2)', color:t.red, fontSize:'12px', fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+                  <Trash2 size={13}/> Suppr.
+                </button>
+              </div>
             </div>
-            <div className="px-6 py-4 flex justify-end gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <button onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white"
-                style={{ background: 'rgba(255,255,255,0.06)' }}>Annuler</button>
-              <button onClick={save}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                <Check size={14} /> Enregistrer
-              </button>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:'20px' }}>
+          <div style={{ background:t.surface, border:'1px solid '+t.border, borderRadius:'16px', padding:'28px', width:'100%', maxWidth:'420px', boxShadow:'0 25px 50px rgba(0,0,0,0.3)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px' }}>
+              <h3 style={{ fontSize:'17px', fontWeight:700, color:t.text, margin:0 }}>{editing?'Modifier l\'horaire':'Ajouter un horaire'}</h3>
+              <button onClick={()=>setShowModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:t.textMuted, display:'flex' }}><X size={20}/></button>
+            </div>
+            {error && <div style={{ padding:'10px 14px', borderRadius:'8px', background:t.badge.absent.bg, color:t.red, fontSize:'13px', marginBottom:'16px' }}>{error}</div>}
+            <div style={{ display:'flex', flexDirection:'column', gap:'14px', marginBottom:'24px' }}>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:600, color:t.textMuted, marginBottom:'5px' }}>Nom de l'horaire</label>
+                <input value={form.name||''} onChange={e=>setForm(p=>({...p,name:e.target.value}))} style={inp()}
+                  onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}/>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                {[['start_time','Heure d\'entrée','time'],['end_time','Heure de sortie','time']].map(([k,l,tp])=>(
+                  <div key={k}>
+                    <label style={{ display:'block', fontSize:'12px', fontWeight:600, color:t.textMuted, marginBottom:'5px' }}>{l}</label>
+                    <input type={tp} value={form[k]||''} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} style={inp()}
+                      onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}/>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label style={{ display:'block', fontSize:'12px', fontWeight:600, color:t.textMuted, marginBottom:'5px' }}>Tolérance (minutes)</label>
+                <input type="number" min={0} max={60} value={form.tolerance_minutes||0} onChange={e=>setForm(p=>({...p,tolerance_minutes:+e.target.value}))} style={inp()}
+                  onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}/>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                <input type="checkbox" id="is_active" checked={!!form.is_active} onChange={e=>setForm(p=>({...p,is_active:e.target.checked}))} style={{ width:'16px', height:'16px', cursor:'pointer', accentColor:'#6366f1' }}/>
+                <label htmlFor="is_active" style={{ fontSize:'13px', color:t.text, cursor:'pointer' }}>Horaire actif</label>
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
+              <button onClick={()=>setShowModal(false)} style={{ padding:'9px 18px', borderRadius:'8px', background:'none', border:'1px solid '+t.border, color:t.textMuted, fontSize:'13px', cursor:'pointer' }}>Annuler</button>
+              <button onClick={save} style={{ padding:'9px 18px', borderRadius:'8px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', color:'#fff', fontSize:'13px', fontWeight:600, cursor:'pointer' }}>{editing?'Enregistrer':'Ajouter'}</button>
             </div>
           </div>
         </div>

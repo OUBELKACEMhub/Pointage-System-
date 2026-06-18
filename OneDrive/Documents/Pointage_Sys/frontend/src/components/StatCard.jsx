@@ -1,33 +1,40 @@
-const themes = {
-  blue:   { bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.25)',  icon: 'rgba(59,130,246,0.2)',  iconColor: '#60a5fa', text: '#93c5fd', value: '#fff' },
-  green:  { bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.25)',  icon: 'rgba(16,185,129,0.2)',  iconColor: '#34d399', text: '#6ee7b7', value: '#fff' },
-  yellow: { bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.25)',  icon: 'rgba(245,158,11,0.2)',  iconColor: '#fbbf24', text: '#fcd34d', value: '#fff' },
-  red:    { bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.25)',   icon: 'rgba(239,68,68,0.2)',   iconColor: '#f87171', text: '#fca5a5', value: '#fff' },
+import { useTheme } from '../context/ThemeContext'
+
+const ACCENT = {
+  blue:   { light: '#6366f1', bgL: 'rgba(99,102,241,0.08)',  bgD: 'rgba(99,102,241,0.15)'  },
+  green:  { light: '#16a34a', bgL: 'rgba(22,163,74,0.08)',   bgD: 'rgba(22,163,74,0.15)'   },
+  amber:  { light: '#d97706', bgL: 'rgba(217,119,6,0.08)',   bgD: 'rgba(217,119,6,0.15)'   },
+  red:    { light: '#dc2626', bgL: 'rgba(220,38,38,0.08)',   bgD: 'rgba(220,38,38,0.15)'   },
 }
 
-export default function StatCard({ label, value, color, icon: Icon, trend }) {
-  const t = themes[color] ?? themes.blue
+export default function StatCard({ label, value, color = 'blue', icon: Icon, sub }) {
+  const { dark, t } = useTheme()
+  const a = ACCENT[color] ?? ACCENT.blue
+  const accent = dark ? a.light.replace('6','8') : a.light
+  const iconBg  = dark ? a.bgD : a.bgL
+
   return (
-    <div className="rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-default"
-      style={{ background: t.bg, border: `1px solid ${t.border}`, backdropFilter: 'blur(10px)' }}>
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{ background: t.icon }}>
-          {Icon && <Icon size={22} style={{ color: t.iconColor }} />}
+    <div style={{
+      background: t.surface,
+      border: '1px solid ' + t.border,
+      borderRadius: '14px',
+      padding: '20px',
+      transition: 'box-shadow 0.2s',
+      cursor: 'default',
+    }}
+    onMouseEnter={e => e.currentTarget.style.boxShadow = dark ? '0 4px 24px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.08)'}
+    onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {Icon && <Icon size={20} color={a.light} />}
         </div>
-        {trend !== undefined && (
-          <span className="text-xs font-semibold px-2 py-1 rounded-full"
-            style={{ background: trend >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: trend >= 0 ? '#34d399' : '#f87171' }}>
-            {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
-          </span>
-        )}
       </div>
-      <div>
-        <p className="text-3xl font-bold mb-1" style={{ color: t.value }}>
-          {value ?? <span className="text-slate-500">—</span>}
-        </p>
-        <p className="text-sm font-medium" style={{ color: t.text }}>{label}</p>
+      <div style={{ color: t.text, fontSize: '28px', fontWeight: 700, lineHeight: 1, marginBottom: '6px' }}>
+        {value ?? <span style={{ color: t.textFaint }}>—</span>}
       </div>
+      <div style={{ color: t.textMuted, fontSize: '13px', fontWeight: 500 }}>{label}</div>
+      {sub && <div style={{ color: t.textFaint, fontSize: '11px', marginTop: '4px' }}>{sub}</div>}
     </div>
   )
 }

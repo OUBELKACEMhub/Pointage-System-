@@ -1,12 +1,14 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import { useTheme } from '../context/ThemeContext'
 
 export default function Layout() {
+  const { t } = useTheme()
   return (
-    <div className="flex min-h-screen" style={{ background: '#0f172a' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: t.bg }}>
       <Sidebar />
-      <main className="flex-1 overflow-auto" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)' }}>
-        <div className="p-8 max-w-7xl mx-auto">
+      <main style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '32px 24px' }}>
           <Outlet />
         </div>
       </main>

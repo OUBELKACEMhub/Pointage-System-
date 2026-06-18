@@ -1,193 +1,167 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Search, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, Users } from 'lucide-react'
 import api from '../api/client'
+import { useTheme } from '../context/ThemeContext'
 
-const EMPTY = { first_name: '', last_name: '', department: '', position: '', zkteco_uid: '' }
-const avatarColors = ['#6366f1','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444']
-const colorFor = (name) => avatarColors[(name || '?').charCodeAt(0) % avatarColors.length]
-const initials = (f, l) => `${f?.[0] ?? ''}${l?.[0] ?? ''}`.toUpperCase()
-
-const cardStyle = { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }
-const inputStyle = {
-  width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: '12px', padding: '10px 14px', color: '#fff', fontSize: '14px', outline: 'none',
-}
+const EMPTY = { first_name:'', last_name:'', department:'', position:'', zkteco_uid:'' }
+const COLORS = ['#6366f1','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#ef4444']
+const colorFor = n => COLORS[(n||'').charCodeAt(0)%COLORS.length]
+const initials = (f,l) => ((f?.[0]??'')+(l?.[0]??'')).toUpperCase()
 
 export default function Employees() {
+  const { t } = useTheme()
   const [employees, setEmployees] = useState([])
   const [search,    setSearch]    = useState('')
   const [showModal, setShowModal] = useState(false)
   const [form,      setForm]      = useState(EMPTY)
   const [editing,   setEditing]   = useState(null)
   const [error,     setError]     = useState('')
+  const [loading,   setLoading]   = useState(false)
 
-  const load = () => api.get('/employees').then(r => setEmployees(r.data)).catch(() => {})
-  useEffect(() => { load() }, [])
+  const load = async () => {
+    setLoading(true)
+    try {
+      const r = await api.get('/employees')
+      setEmployees(Array.isArray(r.data) ? r.data : (r.data.data??[]))
+    } catch {} finally { setLoading(false) }
+  }
+  useEffect(()=>{ load() },[])
 
   const openAdd  = () => { setForm(EMPTY); setEditing(null); setError(''); setShowModal(true) }
-  const openEdit = (e) => { setForm({ ...e }); setEditing(e.id); setError(''); setShowModal(true) }
+  const openEdit = e => { setForm({...e}); setEditing(e.id); setError(''); setShowModal(true) }
   const save = async () => {
     try {
-      editing ? await api.put(`/employees/${editing}`, form) : await api.post('/employees', form)
+      editing ? await api.put(`/employees/${editing}`,form) : await api.post('/employees',form)
       setShowModal(false); load()
-    } catch (e) { setError(e.response?.data?.message ?? 'Erreur lors de la sauvegarde') }
+    } catch(e){ setError(e.response?.data?.message??'Erreur') }
   }
-  const remove = async (id) => {
-    if (!confirm('Supprimer cet employé ?')) return
-    await api.delete(`/employees/${id}`).catch(() => {})
+  const remove = async id => {
+    if(!confirm('Supprimer cet employé ?')) return
+    await api.delete(`/employees/${id}`).catch(()=>{})
     load()
   }
 
   const filtered = employees.filter(e =>
-    !search || `${e.first_name} ${e.last_name}`.toLowerCase().includes(search.toLowerCase())
+    (e.first_name+' '+e.last_name+' '+(e.department||'')).toLowerCase().includes(search.toLowerCase())
   )
 
+  const card = (extra={}) => ({ background:t.surface, border:'1px solid '+t.border, borderRadius:'14px', ...extra })
+  const inp = (extra={}) => ({ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:'8px', border:'1.5px solid '+t.border, background:t.bg, color:t.text, fontSize:'13px', outline:'none', ...extra })
+
   return (
-    <div className="space-y-6">
+    <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <h2 className="text-3xl font-bold text-white">Gestion des Employés</h2>
-          <p className="text-slate-400 mt-1">{employees.length} employé(s) enregistré(s)</p>
+          <h1 style={{ fontSize:'22px', fontWeight:700, color:t.text, margin:0, letterSpacing:'-0.5px' }}>Employés</h1>
+          <p style={{ color:t.textMuted, fontSize:'13px', marginTop:'4px' }}>{employees.length} employé{employees.length!==1?'s':''} enregistré{employees.length!==1?'s':''}</p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 hover:shadow-lg hover:shadow-indigo-500/25"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-          <Plus size={16} /> Ajouter un employé
+        <button onClick={openAdd} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'9px 18px', borderRadius:'10px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', color:'#fff', fontSize:'13px', fontWeight:600, cursor:'pointer' }}>
+          <Plus size={15}/> Ajouter
         </button>
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher un employé…"
-          style={{ ...inputStyle, paddingLeft: '44px' }} />
+      <div style={{ position:'relative' }}>
+        <Search size={15} style={{ position:'absolute', left:'12px', top:'50%', transform:'translateY(-50%)', color:t.textFaint, pointerEvents:'none' }}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un employé..."
+          style={{ ...inp(), paddingLeft:'36px', maxWidth:'320px' }}
+          onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}
+        />
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={cardStyle}>
-        <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <Users size={18} className="text-indigo-400" />
-          <h3 className="font-semibold text-white">Liste des employés</h3>
-        </div>
-        <table className="w-full">
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              {['Employé', 'Département', 'Poste', 'UID ZKTeco', 'Statut', ''].map(h => (
-                <th key={h} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: '#475569' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((emp, i) => (
-              <tr key={emp.id}
-                className="transition-colors hover:bg-white/[0.02]"
-                style={{ borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: colorFor(emp.first_name) }}>
-                      {initials(emp.first_name, emp.last_name)}
-                    </div>
-                    <span className="font-medium text-white text-sm">{emp.first_name} {emp.last_name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-400">{emp.department ?? '—'}</td>
-                <td className="px-6 py-4 text-sm text-slate-400">{emp.position ?? '—'}</td>
-                <td className="px-6 py-4">
-                  <span className="font-mono text-xs px-2 py-1 rounded-lg"
-                    style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                    UID: {emp.zkteco_uid}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
-                    style={emp.is_active
-                      ? { background: 'rgba(16,185,129,0.15)', color: '#34d399' }
-                      : { background: 'rgba(100,116,139,0.15)', color: '#64748b' }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: emp.is_active ? '#10b981' : '#475569' }} />
-                    {emp.is_active ? 'Actif' : 'Inactif'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <button onClick={() => openEdit(emp)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                      style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                      <Pencil size={14} />
-                    </button>
-                    <button onClick={() => remove(emp.id)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                      style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-sm">
-                Aucun employé trouvé
-              </td></tr>
-            )}
-          </tbody>
-        </table>
+      <div style={card({overflow:'hidden'})}>
+        {loading ? (
+          <div style={{ padding:'48px', textAlign:'center', color:t.textFaint }}>Chargement...</div>
+        ) : filtered.length===0 ? (
+          <div style={{ padding:'48px', textAlign:'center', color:t.textFaint }}>
+            <Users size={32} style={{ margin:'0 auto 12px', display:'block', opacity:0.3 }}/>
+            {search ? 'Aucun résultat' : 'Aucun employé enregistré'}
+          </div>
+        ) : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom:'1px solid '+t.border }}>
+                  {['Employé','Département','Poste','UID ZKTeco','Actions'].map(h=>(
+                    <th key={h} style={{ padding:'11px 20px', textAlign:h==='Actions'?'right':'left', fontSize:'11px', fontWeight:700, color:t.textFaint, textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(emp=>(
+                  <tr key={emp.id} style={{ borderBottom:'1px solid '+t.border, transition:'background 0.15s' }}
+                    onMouseEnter={e=>e.currentTarget.style.background=t.surfaceHover}
+                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <td style={{ padding:'13px 20px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                        <div style={{ width:'34px', height:'34px', borderRadius:'8px', background:colorFor(emp.first_name), display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:'13px', flexShrink:0 }}>
+                          {initials(emp.first_name,emp.last_name)}
+                        </div>
+                        <span style={{ fontSize:'13px', fontWeight:500, color:t.text }}>{emp.first_name} {emp.last_name}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding:'13px 20px', fontSize:'13px', color:t.textMuted }}>{emp.department||'—'}</td>
+                    <td style={{ padding:'13px 20px', fontSize:'13px', color:t.textMuted }}>{emp.position||'—'}</td>
+                    <td style={{ padding:'13px 20px' }}>
+                      <span style={{ padding:'2px 8px', borderRadius:'6px', background:t.primaryBg, color:t.primary, fontSize:'12px', fontWeight:600, fontFamily:'monospace' }}>
+                        {emp.zkteco_uid||'—'}
+                      </span>
+                    </td>
+                    <td style={{ padding:'13px 20px', textAlign:'right' }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'6px' }}>
+                        <button onClick={()=>openEdit(emp)} style={{ padding:'5px 10px', borderRadius:'7px', background:t.primaryBg, border:'1px solid '+t.primaryBorder, color:t.primary, fontSize:'12px', fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+                          <Pencil size={12}/> Modifier
+                        </button>
+                        <button onClick={()=>remove(emp.id)} style={{ padding:'5px 10px', borderRadius:'7px', background:t.badge.absent.bg, border:'1px solid rgba(220,38,38,0.2)', color:t.red, fontSize:'12px', fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+                          <Trash2 size={12}/> Suppr.
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
-          <div className="w-full max-w-md rounded-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1e1b4b, #0f172a)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 className="font-bold text-white text-lg">{editing ? 'Modifier' : 'Nouvel'} employé</h3>
-              <button onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <X size={16} />
-              </button>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:'20px' }}>
+          <div style={{ background:t.surface, border:'1px solid '+t.border, borderRadius:'16px', padding:'28px', width:'100%', maxWidth:'480px', boxShadow:'0 25px 50px rgba(0,0,0,0.3)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'24px' }}>
+              <h3 style={{ fontSize:'17px', fontWeight:700, color:t.text, margin:0 }}>{editing?'Modifier l\'employé':'Ajouter un employé'}</h3>
+              <button onClick={()=>setShowModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:t.textMuted, display:'flex' }}><X size={20}/></button>
             </div>
-            <div className="px-6 py-5 space-y-4">
-              {error && (
-                <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
-                  {error}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { field: 'first_name', label: 'Prénom *', col: 1 },
-                  { field: 'last_name',  label: 'Nom *',    col: 1 },
-                ].map(({ field, label }) => (
-                  <div key={field}>
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>{label}</label>
-                    <input value={form[field]} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} style={inputStyle} />
-                  </div>
-                ))}
-              </div>
-              {[
-                { field: 'department', label: 'Département' },
-                { field: 'position',   label: 'Poste' },
-                { field: 'zkteco_uid', label: 'UID ZKTeco *' },
-              ].map(({ field, label }) => (
-                <div key={field}>
-                  <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>{label}</label>
-                  <input value={form[field]} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} style={inputStyle} />
+            {error && <div style={{ padding:'10px 14px', borderRadius:'8px', background:t.badge.absent.bg, color:t.red, fontSize:'13px', marginBottom:'16px', border:'1px solid rgba(220,38,38,0.2)' }}>{error}</div>}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginBottom:'14px' }}>
+              {[['first_name','Prénom'],['last_name','Nom']].map(([k,l])=>(
+                <div key={k}>
+                  <label style={{ display:'block', fontSize:'12px', fontWeight:600, color:t.textMuted, marginBottom:'5px' }}>{l}</label>
+                  <input value={form[k]||''} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} style={inp()}
+                    onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}/>
                 </div>
               ))}
             </div>
-            <div className="px-6 py-4 flex justify-end gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <button onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-colors"
-                style={{ background: 'rgba(255,255,255,0.06)' }}>
-                Annuler
-              </button>
-              <button onClick={save}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                <Check size={14} /> Enregistrer
-              </button>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginBottom:'14px' }}>
+              {[['department','Département'],['position','Poste']].map(([k,l])=>(
+                <div key={k}>
+                  <label style={{ display:'block', fontSize:'12px', fontWeight:600, color:t.textMuted, marginBottom:'5px' }}>{l}</label>
+                  <input value={form[k]||''} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} style={inp()}
+                    onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}/>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginBottom:'24px' }}>
+              <label style={{ display:'block', fontSize:'12px', fontWeight:600, color:t.textMuted, marginBottom:'5px' }}>UID ZKTeco</label>
+              <input value={form.zkteco_uid||''} onChange={e=>setForm(p=>({...p,zkteco_uid:e.target.value}))} style={inp()}
+                onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}/>
+            </div>
+            <div style={{ display:'flex', gap:'10px', justifyContent:'flex-end' }}>
+              <button onClick={()=>setShowModal(false)} style={{ padding:'9px 18px', borderRadius:'8px', background:'none', border:'1px solid '+t.border, color:t.textMuted, fontSize:'13px', fontWeight:500, cursor:'pointer' }}>Annuler</button>
+              <button onClick={save} style={{ padding:'9px 18px', borderRadius:'8px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', border:'none', color:'#fff', fontSize:'13px', fontWeight:600, cursor:'pointer' }}>{editing?'Enregistrer':'Ajouter'}</button>
             </div>
           </div>
         </div>
