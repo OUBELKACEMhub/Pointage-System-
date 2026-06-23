@@ -1,3 +1,9 @@
+# Secrets — ne jamais commiter
+.env
+**/.env
+frontend/.env.production
+zkteco-sync/.env
+
 # Laravel
 backend/vendor/
 backend/.env
