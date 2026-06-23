@@ -43,6 +43,42 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function week()
+    {
+        $days = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i)->toDateString();
+            $stats = DailyAttendance::whereDate('work_date', $date)
+                ->selectRaw("SUM(status='present') as present, SUM(status='late') as late, SUM(status='absent') as absent")
+                ->first();
+            $days[] = [
+                'date'    => $date,
+                'present' => (int)($stats->present ?? 0),
+                'late'    => (int)($stats->late    ?? 0),
+                'absent'  => (int)($stats->absent  ?? 0),
+            ];
+        }
+
+        // Taux de ponctualité sur 7 jours (présents uniquement / total pointés)
+        $totPresent = array_sum(array_column($days, 'present'));
+        $totLate    = array_sum(array_column($days, 'late'));
+        $totPointed = $totPresent + $totLate;
+        $punctuality = $totPointed > 0 ? round($totPresent / $totPointed * 100) : null;
+
+        // Heure d'arrivée moyenne de l'équipe aujourd'hui
+        $avgArrival = DailyAttendance::whereDate('work_date', Carbon::today())
+            ->whereNotNull('check_in')
+            ->whereIn('status', ['present', 'late'])
+            ->selectRaw('SEC_TO_TIME(AVG(TIME_TO_SEC(check_in))) as avg_in')
+            ->value('avg_in');
+
+        return response()->json([
+            'days'        => $days,
+            'punctuality' => $punctuality,
+            'avg_arrival' => $avgArrival ? substr($avgArrival, 0, 5) : null,
+        ]);
+    }
+
     public function liveFeed()
     {
         $logs = AttendanceLog::with('employee')

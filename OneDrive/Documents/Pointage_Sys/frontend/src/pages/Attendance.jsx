@@ -3,13 +3,20 @@ import { Search, CalendarCheck, ChevronLeft, ChevronRight, ChevronDown, ChevronU
 import api from '../api/client'
 import Badge from '../components/Badge'
 import { useTheme } from '../context/ThemeContext'
+import { useLang } from '../context/LanguageContext'
 
 const fmtDate  = s => s ? String(s).slice(0,10) : '—'
-const fmtHHMM  = s => s ? String(s).replace('T',' ').slice(11,16) : '—'
+const fmtHHMM  = s => {
+  if (!s) return '—'
+  const str = String(s).replace('T', ' ')
+  // time-only "10:02:00" (len ≤ 8) vs full datetime "2026-06-19 10:02:00"
+  return str.length <= 8 ? str.slice(0, 5) : str.slice(11, 16)
+}
 const fmtFull  = s => s ? String(s).replace('T',' ').slice(0,16)  : '—'
 
 export default function Attendance() {
   const { t } = useTheme()
+  const { tr } = useLang()
   const [rows,     setRows]     = useState([])
   const [loading,  setLoading]  = useState(false)
   const [meta,     setMeta]     = useState(null)
@@ -44,15 +51,15 @@ export default function Attendance() {
     <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize:'22px', fontWeight:700, color:t.text, margin:0, letterSpacing:'-0.5px' }}>Suivi Quotidien</h1>
-        <p style={{ color:t.textMuted, fontSize:'13px', marginTop:'4px' }}>Historique des pointages et statuts de présence</p>
+        <h1 style={{ fontSize:'22px', fontWeight:700, color:t.text, margin:0, letterSpacing:'-0.5px' }}>{tr.attendanceTitle}</h1>
+        <p style={{ color:t.textMuted, fontSize:'13px', marginTop:'4px' }}>{tr.scanTimeline}</p>
       </div>
 
       {/* Filters */}
       <div style={{ display:'flex', flexWrap:'wrap', gap:'10px', alignItems:'center' }}>
         <div style={{ position:'relative', flex:'1', minWidth:'200px', maxWidth:'280px' }}>
           <Search size={14} style={{ position:'absolute', left:'10px', top:'50%', transform:'translateY(-50%)', color:t.textFaint, pointerEvents:'none' }}/>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un employé..."
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={tr.searchEmployee}
             style={{ ...inp(), width:'100%', boxSizing:'border-box', paddingLeft:'32px' }}
             onFocus={e=>e.target.style.borderColor='#6366f1'} onBlur={e=>e.target.style.borderColor=t.border}
           />
@@ -65,7 +72,7 @@ export default function Attendance() {
         {(search||dateFrom||dateTo) && (
           <button onClick={()=>{ setSearch(''); setDateFrom(''); setDateTo('') }}
             style={{ padding:'8px 14px', borderRadius:'8px', background:'none', border:'1px solid '+t.border, color:t.textMuted, fontSize:'12px', cursor:'pointer' }}>
-            Réinitialiser
+            {tr.reset}
           </button>
         )}
       </div>
@@ -73,18 +80,18 @@ export default function Attendance() {
       {/* Table */}
       <div style={card({overflow:'hidden'})}>
         {loading ? (
-          <div style={{ padding:'48px', textAlign:'center', color:t.textFaint }}>Chargement...</div>
+          <div style={{ padding:'48px', textAlign:'center', color:t.textFaint }}>{tr.saving?.replace('...','') || 'Chargement'}...</div>
         ) : rows.length===0 ? (
           <div style={{ padding:'48px', textAlign:'center', color:t.textFaint }}>
             <CalendarCheck size={32} style={{ margin:'0 auto 12px', display:'block', opacity:0.3 }}/>
-            Aucun enregistrement trouvé
+            {tr.noRecord}
           </div>
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ borderBottom:'1px solid '+t.border }}>
-                  {['Employé','Date','Entrée','Sortie','Durée','Statut','Détails'].map(h=>(
+                  {[tr.employee, tr.date, tr.checkIn, tr.checkOut, tr.duration, tr.status, tr.details].map(h=>(
                     <th key={h} style={{ padding:'11px 18px', textAlign:'left', fontSize:'11px', fontWeight:700, color:t.textFaint, textTransform:'uppercase', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -106,12 +113,27 @@ export default function Attendance() {
                         )}
                       </td>
                       <td style={{ padding:'13px 18px', fontSize:'13px', color:t.text, fontVariantNumeric:'tabular-nums' }}>{fmtDate(row.work_date)}</td>
-                      <td style={{ padding:'13px 18px', fontSize:'13px', fontWeight:600, color:t.green, fontVariantNumeric:'tabular-nums' }}>{fmtHHMM(row.check_in)}</td>
-                      <td style={{ padding:'13px 18px', fontSize:'13px', fontWeight:600, color:t.red,   fontVariantNumeric:'tabular-nums' }}>{fmtHHMM(row.check_out)}</td>
+                      <td style={{ padding:'13px 18px', fontSize:'13px', fontWeight:600, color:t.green, fontVariantNumeric:'tabular-nums' }}>{fmtHHMM(row.check_in ?? row.scans?.[0])}</td>
+                      <td style={{ padding:'13px 18px', fontSize:'13px', fontWeight:600, color:t.red,   fontVariantNumeric:'tabular-nums' }}>{row.check_out ? fmtHHMM(row.check_out) : (row.scans?.length > 1 ? fmtHHMM(row.scans[row.scans.length - 1]) : '—')}</td>
                       <td style={{ padding:'13px 18px', fontSize:'13px', color:t.textMuted, fontVariantNumeric:'tabular-nums' }}>
                         {row.worked_hours ?? '—'}
                       </td>
-                      <td style={{ padding:'13px 18px' }}><Badge status={row.status}/></td>
+                      <td style={{ padding:'13px 18px' }}>
+                        <div style={{ display:'flex', flexDirection:'column', gap:'4px', alignItems:'flex-start' }}>
+                          {row.on_leave ? (
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 10px', borderRadius:'20px', fontSize:'12px', fontWeight:600, background:'rgba(59,130,246,0.12)', border:'1px solid rgba(59,130,246,0.3)', color:'#60a5fa' }}>
+                              🏖 {tr.onLeave ?? 'En congé'}
+                            </span>
+                          ) : (
+                            <Badge status={row.status}/>
+                          )}
+                          {row.justification && !row.on_leave && (
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'10px', fontWeight:600, color:'#6366f1', background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:'20px', padding:'2px 8px' }}>
+                              ✓ {tr.justifApproved ?? 'Justifié'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td style={{ padding:'13px 18px' }}>
                         {scans.length>0 && (
                           <button onClick={()=>toggleExpand(row.id)}
@@ -126,15 +148,22 @@ export default function Attendance() {
                       <tr key={'exp-'+row.id} style={{ borderBottom:'1px solid '+t.border }}>
                         <td colSpan={7} style={{ padding:'0 18px 14px 18px' }}>
                           <div style={{ background:t.bg, borderRadius:'8px', padding:'12px 16px', border:'1px solid '+t.border }}>
-                            <div style={{ fontSize:'11px', fontWeight:700, color:t.textFaint, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'10px' }}>
-                              Chronologie des pointages
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+                              <div style={{ fontSize:'11px', fontWeight:700, color:t.textFaint, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                                {tr.scanTimeline}
+                              </div>
+                              {row.justification && (
+                                <div style={{ fontSize:'11px', color:'#6366f1', fontWeight:600 }}>
+                                  📄 {row.justification.reason}
+                                </div>
+                              )}
                             </div>
                             <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
                               {scans.map((sc,i) => (
                                 <div key={i} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'5px 12px', borderRadius:'20px', background:t.surface, border:'1px solid '+t.border, fontSize:'12px', color:t.text }}>
                                   <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: i===0?t.green : i===scans.length-1?t.red : t.primary, flexShrink:0 }}/>
                                   <span style={{ fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{fmtHHMM(sc)}</span>
-                                  <span style={{ color:t.textFaint, fontSize:'10px' }}>{i===0?'Entrée':i===scans.length-1&&scans.length>1?'Sortie':'Scan '+(i+1)}</span>
+                                  <span style={{ color:t.textFaint, fontSize:'10px' }}>{i===0?tr.checkIn:i===scans.length-1&&scans.length>1?tr.checkOut:'Scan '+(i+1)}</span>
                                 </div>
                               ))}
                             </div>
@@ -151,28 +180,49 @@ export default function Attendance() {
       </div>
 
       {/* Pagination */}
-      {meta && meta.last_page > 1 && (
+      {meta && meta.last_page >= 1 && (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'12px' }}>
           <span style={{ fontSize:'13px', color:t.textMuted }}>
-            {meta.from}–{meta.to} sur {meta.total} enregistrements
+            {meta.from ?? 0}–{meta.to ?? 0} <span style={{ color:t.textFaint }}>{tr.of}</span> <strong style={{ color:t.text }}>{meta.total}</strong> {tr.records}
           </span>
-          <div style={{ display:'flex', gap:'6px' }}>
-            <button onClick={()=>load(page-1)} disabled={page<=1}
-              style={{ display:'flex', alignItems:'center', gap:'4px', padding:'7px 14px', borderRadius:'8px', background:t.surface, border:'1px solid '+t.border, color:page<=1?t.textFaint:t.text, fontSize:'12px', cursor:page<=1?'not-allowed':'pointer', opacity:page<=1?0.5:1 }}>
-              <ChevronLeft size={14}/> Précédent
+          <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+            {/* First */}
+            <button onClick={()=>load(1)} disabled={page<=1}
+              style={{ width:'32px', height:'32px', borderRadius:'8px', border:'1px solid '+t.border, background:'none', color:page<=1?t.textFaint:t.text, fontSize:'13px', cursor:page<=1?'not-allowed':'pointer', opacity:page<=1?0.4:1 }}>
+              «
             </button>
-            {Array.from({length:Math.min(5,meta.last_page)},(_,i)=>{
-              const p = meta.last_page<=5 ? i+1 : page<=3 ? i+1 : page>=meta.last_page-2 ? meta.last_page-4+i : page-2+i
+            {/* Prev */}
+            <button onClick={()=>load(page-1)} disabled={page<=1}
+              style={{ display:'flex', alignItems:'center', gap:'4px', padding:'6px 12px', borderRadius:'8px', background:t.surface, border:'1px solid '+t.border, color:page<=1?t.textFaint:t.text, fontSize:'12px', fontWeight:500, cursor:page<=1?'not-allowed':'pointer', opacity:page<=1?0.4:1 }}>
+              <ChevronLeft size={13}/> {tr.previous}
+            </button>
+            {/* Page numbers */}
+            {Array.from({length: Math.min(5, meta.last_page)}, (_, i) => {
+              const lp = meta.last_page
+              const p  = lp <= 5 ? i+1
+                       : page <= 3 ? i+1
+                       : page >= lp-2 ? lp-4+i
+                       : page-2+i
               return (
                 <button key={p} onClick={()=>load(p)}
-                  style={{ width:'34px', height:'34px', borderRadius:'8px', border:'1px solid '+(p===page?t.primary:t.border), background:p===page?t.primaryBg:'none', color:p===page?t.primary:t.textMuted, fontSize:'13px', fontWeight:p===page?700:400, cursor:'pointer' }}>
+                  style={{ width:'32px', height:'32px', borderRadius:'8px', fontSize:'13px', fontWeight: p===page?700:400, cursor:'pointer',
+                    border: p===page ? 'none' : '1px solid '+t.border,
+                    background: p===page ? t.primary : 'none',
+                    color: p===page ? '#fff' : t.textMuted,
+                  }}>
                   {p}
                 </button>
               )
             })}
+            {/* Next */}
             <button onClick={()=>load(page+1)} disabled={page>=meta.last_page}
-              style={{ display:'flex', alignItems:'center', gap:'4px', padding:'7px 14px', borderRadius:'8px', background:t.surface, border:'1px solid '+t.border, color:page>=meta.last_page?t.textFaint:t.text, fontSize:'12px', cursor:page>=meta.last_page?'not-allowed':'pointer', opacity:page>=meta.last_page?0.5:1 }}>
-              Suivant <ChevronRight size={14}/>
+              style={{ display:'flex', alignItems:'center', gap:'4px', padding:'6px 12px', borderRadius:'8px', background:t.surface, border:'1px solid '+t.border, color:page>=meta.last_page?t.textFaint:t.text, fontSize:'12px', fontWeight:500, cursor:page>=meta.last_page?'not-allowed':'pointer', opacity:page>=meta.last_page?0.4:1 }}>
+              {tr.next} <ChevronRight size={13}/>
+            </button>
+            {/* Last */}
+            <button onClick={()=>load(meta.last_page)} disabled={page>=meta.last_page}
+              style={{ width:'32px', height:'32px', borderRadius:'8px', border:'1px solid '+t.border, background:'none', color:page>=meta.last_page?t.textFaint:t.text, fontSize:'13px', cursor:page>=meta.last_page?'not-allowed':'pointer', opacity:page>=meta.last_page?0.4:1 }}>
+              »
             </button>
           </div>
         </div>

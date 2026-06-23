@@ -1,19 +1,23 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, CalendarCheck, Clock, FileBarChart2, Fingerprint, LogOut, Sun, Moon } from 'lucide-react'
+import { LayoutDashboard, Users, CalendarCheck, Clock, FileBarChart2, Fingerprint, LogOut, Sun, Moon, CalendarOff, FileText } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { useLang } from '../context/LanguageContext'
 import api from '../api/client'
-
-const links = [
-  { to: '/',           label: 'Dashboard',      icon: LayoutDashboard },
-  { to: '/employees',  label: 'Employés',        icon: Users },
-  { to: '/attendance', label: 'Suivi Quotidien', icon: CalendarCheck },
-  { to: '/schedules',  label: 'Horaires',        icon: Clock },
-  { to: '/reports',    label: 'Rapports',        icon: FileBarChart2 },
-]
 
 export default function Sidebar() {
   const navigate = useNavigate()
-  const { dark, toggle } = useTheme()
+  const { dark, toggle: toggleTheme } = useTheme()
+  const { lang, toggle: toggleLang, tr } = useLang()
+
+  const links = [
+    { to: '/',           label: tr.dashboard,  icon: LayoutDashboard },
+    { to: '/employees',  label: tr.employees,  icon: Users },
+    { to: '/attendance', label: tr.attendance, icon: CalendarCheck },
+    { to: '/schedules',  label: tr.schedules,  icon: Clock },
+    { to: '/reports',    label: tr.reports,    icon: FileBarChart2 },
+    { to: '/leaves',          label: tr.leaves ?? 'Congés',         icon: CalendarOff },
+    { to: '/justifications',  label: tr.justifications ?? 'Justificatifs', icon: FileText },
+  ]
 
   const logout = async () => {
     try { await api.post('/logout') } catch {}
@@ -25,7 +29,7 @@ export default function Sidebar() {
   const user = JSON.parse(localStorage.getItem('zk_user') || '{}')
 
   const s = {
-    sidebar:    { background: '#111827', borderRight: '1px solid rgba(255,255,255,0.06)', width: '240px', minHeight: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0 },
+    sidebar:    { background: '#111827', borderRight: lang==='ar' ? 'none' : '1px solid rgba(255,255,255,0.06)', borderLeft: lang==='ar' ? '1px solid rgba(255,255,255,0.06)' : 'none', width: '240px', minHeight: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0 },
     logo:       { padding: '24px 20px 16px' },
     logoIcon:   { width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     divider:    { height: '1px', background: 'rgba(255,255,255,0.06)', margin: '0 16px 16px' },
@@ -35,7 +39,8 @@ export default function Sidebar() {
     userBox:    { borderRadius: '12px', padding: '12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '8px' },
     avatar:     { width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '12px', flexShrink: 0 },
     logoutBtn:  { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
-    themeBtn:   { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', fontSize: '12px', fontWeight: 500, cursor: 'pointer', marginBottom: '8px' },
+    themeBtn:   { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', fontSize: '12px', fontWeight: 500, cursor: 'pointer', marginBottom: '6px' },
+    langBtn:    { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '7px', borderRadius: '8px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: '12px', fontWeight: 600, cursor: 'pointer', marginBottom: '8px', letterSpacing: '0.02em' },
   }
 
   const initials = (name) => (name || 'RH').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -50,7 +55,7 @@ export default function Sidebar() {
           </div>
           <div>
             <div style={{ color: '#f9fafb', fontWeight: 700, fontSize: '16px', lineHeight: 1 }}>ZKPointe</div>
-            <div style={{ color: '#6366f1', fontSize: '11px', marginTop: '3px' }}>Gestion des Présences</div>
+            <div style={{ color: '#6366f1', fontSize: '11px', marginTop: '3px' }}>{tr.appSubtitle}</div>
           </div>
         </div>
       </div>
@@ -59,7 +64,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav style={s.nav}>
-        <div style={s.sectionLbl}>Navigation</div>
+        <div style={s.sectionLbl}>{tr.nav}</div>
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -78,6 +83,7 @@ export default function Sidebar() {
               color: isActive ? '#e0e7ff' : '#6b7280',
               background: isActive ? 'rgba(99,102,241,0.2)' : 'transparent',
               border: isActive ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent',
+              fontFamily: lang === 'ar' ? "'Segoe UI', Tahoma, Arial, sans-serif" : 'inherit',
             })}
           >
             {({ isActive }) => (
@@ -85,7 +91,7 @@ export default function Sidebar() {
                 <Icon size={15} color={isActive ? '#818cf8' : '#6b7280'} />
                 {label}
                 {isActive && (
-                  <div style={{ marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', background: '#6366f1' }} />
+                  <div style={{ marginLeft: lang==='ar'?0:'auto', marginRight: lang==='ar'?'auto':0, width: '6px', height: '6px', borderRadius: '50%', background: '#6366f1' }} />
                 )}
               </>
             )}
@@ -95,10 +101,25 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div style={s.footer}>
+        {/* Language toggle */}
+        <button onClick={toggleLang} style={s.langBtn}>
+          <span style={{
+            display:'inline-flex', alignItems:'center', justifyContent:'center',
+            width:'20px', height:'20px', borderRadius:'4px', fontSize:'10px', fontWeight:800,
+            background: lang==='fr' ? '#c1272d' : '#003087',
+            color:'#fff', flexShrink:0, letterSpacing:'0.02em',
+          }}>
+            {lang === 'fr' ? 'AR' : 'FR'}
+          </span>
+          <span style={{ fontFamily: lang==='ar'?"'Cairo','Segoe UI',Tahoma,Arial,sans-serif":'inherit' }}>
+            {lang === 'fr' ? 'العربية' : 'Français'}
+          </span>
+        </button>
+
         {/* Theme toggle */}
-        <button onClick={toggle} style={s.themeBtn}>
+        <button onClick={toggleTheme} style={s.themeBtn}>
           {dark ? <Sun size={14} /> : <Moon size={14} />}
-          {dark ? 'Mode clair' : 'Mode sombre'}
+          {dark ? tr.lightMode : tr.darkMode}
         </button>
 
         {/* User info */}
@@ -112,7 +133,7 @@ export default function Sidebar() {
           </div>
           <button onClick={logout} style={s.logoutBtn}>
             <LogOut size={13} />
-            Déconnexion
+            {tr.logout}
           </button>
         </div>
       </div>

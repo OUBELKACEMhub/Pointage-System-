@@ -1,0 +1,63 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: zkpointe-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: zkpointe
+      MYSQL_DATABASE: zkpointe
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pzkpointe"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: zkpointe-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_KEY: base64:3UhhbkcxYPfSMpLuX4hzCApQBFVJc/S444xBziJ+pFw=
+      APP_ENV: production
+      APP_DEBUG: false
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: zkpointe
+      DB_USERNAME: root
+      DB_PASSWORD: zkpointe
+      API_SYNC_SECRET: ${API_SYNC_SECRET:-zkpointe_secret}
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: zkpointe-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  sync:
+    build: ./zkteco-sync
+    container_name: zkpointe-sync
+    restart: always
+    network_mode: host
+    depends_on:
+      - backend
+    environment:
+      ZKTECO_IP: ${ZKTECO_IP:-192.168.1.201}
+      ZKTECO_PORT: ${ZKTECO_PORT:-4370}
+      API_URL: http://localhost:8000/api/sync/logs
+      API_SYNC_SECRET: ${API_SYNC_SECRET:-zkpointe_secret}
+      SYNC_INTERVAL: 3
+
+volumes:
+  mysql_data:

@@ -113,12 +113,29 @@ def run():
             attendances = conn.get_attendance()
 
             if first_cycle:
-                # Premier cycle : charger les pointages existants sans les envoyer
+                # Premier cycle : récupérer les pointages déjà en base depuis l'API
+                try:
+                    r_api = requests.get(API_BASE + "/known-punches", headers=HEADERS, timeout=10)
+                    db_punches = set(r_api.json().get("punches", []))
+                except Exception:
+                    db_punches = set()
+
+                today_str = time.strftime("%Y-%m-%d")
+                missed = []
                 for r in attendances:
-                    known_punches.add((str(r.user_id), r.timestamp.strftime("%Y-%m-%d %H:%M:%S")))
-                log.info(f"{len(known_punches)} pointages existants charges (ignores).")
+                    key = (str(r.user_id), r.timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+                    known_punches.add(key)
+                    # Envoyer les pointages d'aujourd'hui absents de la base
+                    if r.timestamp.strftime("%Y-%m-%d") == today_str and key[1] not in db_punches:
+                        missed.append({"zkteco_uid": key[0], "punched_at": key[1]})
+
+                if missed:
+                    log.info(f"{len(missed)} pointage(s) d'aujourd'hui manquant(s) — envoi...")
+                    send_logs(missed)
+                else:
+                    log.info(f"{len(known_punches)} pointages charges. Aucun manquant aujourd'hui.")
+
                 first_cycle = False
-                # Forcer un sync employés au 1er cycle
                 last_emp_sync = 0
             else:
                 new_logs = []
