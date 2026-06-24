@@ -34,8 +34,12 @@ cd /d "%BACKEND_DIR%"
 if not exist ".env" (
     copy ".env.example" ".env" >nul
 )
-echo    Installation des dependances PHP (composer)...
-composer install --no-dev --optimize-autoloader --no-interaction
+REM Creer les dossiers necessaires
+if not exist "bootstrap\cache" mkdir bootstrap\cache
+if not exist "storage\logs" mkdir storage\logs
+if not exist "storage\framework\cache" mkdir storage\framework\cache
+if not exist "storage\framework\sessions" mkdir storage\framework\sessions
+if not exist "storage\framework\views" mkdir storage\framework\views
 "C:\xampp\php\php.exe" artisan key:generate --force
 "C:\xampp\php\php.exe" artisan migrate --force
 "C:\xampp\php\php.exe" artisan db:seed --force
