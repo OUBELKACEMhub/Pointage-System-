@@ -34,9 +34,9 @@ cd /d "%BACKEND_DIR%"
 if not exist ".env" (
     copy ".env.example" ".env" >nul
 )
-php artisan key:generate --force
-php artisan migrate --force
-php artisan db:seed --force
+"C:\xampp\php\php.exe" artisan key:generate --force
+"C:\xampp\php\php.exe" artisan migrate --force
+"C:\xampp\php\php.exe" artisan db:seed --force
 echo OK - Backend configure.
 
 REM ── Installer frontend ────────────────────────────────────────────
@@ -51,7 +51,7 @@ REM ── Installer Python ─────────────────�
 echo.
 echo [5/5] Installation dependances Python...
 cd /d "%SYNC_DIR%"
-pip install -r requirements.txt --quiet
+python -m pip install -r requirements.txt --quiet 2>nul || py -m pip install -r requirements.txt --quiet 2>nul || echo ATTENTION: pip non disponible, installe manuellement: python -m pip install -r requirements.txt
 echo OK - Python configure.
 
 REM ── Termine ───────────────────────────────────────────────────────
