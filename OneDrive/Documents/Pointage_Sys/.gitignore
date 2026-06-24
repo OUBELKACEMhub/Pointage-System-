@@ -5,7 +5,6 @@ frontend/.env.production
 zkteco-sync/.env
 
 # Laravel
-backend/vendor/
 backend/.env
 backend/storage/logs/
 backend/storage/framework/cache/
