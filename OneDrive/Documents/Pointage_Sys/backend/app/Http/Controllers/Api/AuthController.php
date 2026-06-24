@@ -45,4 +45,21 @@ class AuthController extends Controller
     {
         return response()->json(['name' => $request->user()->name, 'email' => $request->user()->email]);
     }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password'     => 'required|string|min:6|confirmed',
+        ]);
+
+        if (!Hash::check($request->current_password, $request->user()->password)) {
+            return response()->json(['message' => 'Mot de passe actuel incorrect.'], 422);
+        }
+
+        $request->user()->update(['password' => Hash::make($request->new_password)]);
+        $request->user()->tokens()->delete();
+
+        return response()->json(['message' => 'Mot de passe modifié. Reconnectez-vous.']);
+    }
 }
