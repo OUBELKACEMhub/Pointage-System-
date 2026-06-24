@@ -43,6 +43,8 @@ if not exist "storage\framework\views" mkdir storage\framework\views
 "C:\xampp\php\php.exe" artisan key:generate --force
 "C:\xampp\php\php.exe" artisan migrate --force
 "C:\xampp\php\php.exe" artisan db:seed --force
+"C:\xampp\php\php.exe" artisan storage:link --force
+if not exist "storage\app\public\photos" mkdir storage\app\public\photos
 echo OK - Backend configure.
 
 REM ── Installer frontend ────────────────────────────────────────────
