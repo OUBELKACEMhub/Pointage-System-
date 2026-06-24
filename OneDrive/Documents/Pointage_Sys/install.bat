@@ -34,6 +34,8 @@ cd /d "%BACKEND_DIR%"
 if not exist ".env" (
     copy ".env.example" ".env" >nul
 )
+echo    Installation des dependances PHP (composer)...
+composer install --no-dev --optimize-autoloader --no-interaction
 "C:\xampp\php\php.exe" artisan key:generate --force
 "C:\xampp\php\php.exe" artisan migrate --force
 "C:\xampp\php\php.exe" artisan db:seed --force
