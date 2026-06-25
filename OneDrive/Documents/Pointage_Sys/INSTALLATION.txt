@@ -1,0 +1,114 @@
+========================================
+   ZKPOINTE - GUIDE INSTALLATION PC NOUVEAU
+========================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. LOGICIELS A INSTALLER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[1] XAMPP 8.2+
+    → https://www.apachefriends.org
+    → Installer PHP + MySQL
+    → Apres installation : lancer XAMPP et demarrer MySQL
+
+[2] Node.js 20+
+    → https://nodejs.org
+    → Telecharger version LTS
+
+[3] Python 3.10+
+    → https://python.org
+    → IMPORTANT : cocher "Add Python to PATH" pendant l'installation
+
+[4] Git
+    → https://git-scm.com
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. INSTALLATION DU PROJET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Telecharger le projet depuis GitHub :
+   https://github.com/OUBELKACEMhub/Pointage-System-
+
+   OU copier le dossier ZKPointe directement sur le PC
+   et le mettre dans C:\ZKPointe\
+
+2. Ouvrir XAMPP → demarrer MySQL
+
+3. Double-cliquer sur : install.bat
+   (attendre la fin, ca prend 2-3 minutes)
+
+4. Double-cliquer sur : start.bat
+   → L'app s'ouvre automatiquement sur http://localhost:3000
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. CONNEXION A L'APPLICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Email    : rh@zkpointe.local
+Mot de passe : rh2024!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. FICHIERS A MODIFIER APRES INSTALLATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[A] C:\ZKPointe\backend\.env
+    Verifier ces lignes :
+
+    DB_HOST=127.0.0.1
+    DB_DATABASE=zkpointe
+    DB_USERNAME=root
+    DB_PASSWORD=             ← laisser vide pour XAMPP
+    API_SYNC_SECRET=zkpointe_secret
+
+
+[B] C:\ZKPointe\zkteco-sync\.env
+    Modifier l'IP de la pointeuse :
+
+    ZKTECO_IP=192.168.X.X   ← IP de la pointeuse (voir ecran pointeuse → Menu → Communication → IP)
+    ZKTECO_PORT=4370
+    API_URL=http://localhost:8000/api/sync/logs
+    API_SYNC_SECRET=zkpointe_secret
+    SYNC_INTERVAL=3
+
+
+[C] C:\ZKPointe\frontend\.env.production
+    (cree automatiquement par install.bat)
+
+    VITE_API_URL=http://localhost:8000/api
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. SI PROBLEME AVEC LES TABLES DB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ouvrir CMD et taper :
+
+    cd C:\ZKPointe\backend
+    C:\xampp\php\php.exe artisan migrate:fresh --seed --force
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. SI "python" NE MARCHE PAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sur certains PC Windows, Python s'appelle "py" au lieu de "python".
+Le start.bat gere ca automatiquement.
+
+Si le sync ne demarre pas, lancer manuellement :
+    cd C:\ZKPointe\zkteco-sync
+    py sync.py
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. DEMARRAGE QUOTIDIEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Chaque matin :
+1. Ouvrir XAMPP → cliquer Start sur MySQL
+2. Double-cliquer start.bat
+3. L'app s'ouvre automatiquement
+
+========================================
