@@ -8,7 +8,7 @@ REM Frontend
 start "ZKPointe-Frontend" cmd /c "cd /d %~dp0frontend\dist && serve --single -p 3000 & pause"
 
 REM Sync ZKTeco
-start "ZKPointe-Sync" cmd /c "cd /d %~dp0zkteco-sync && python sync.py & pause"
+start "ZKPointe-Sync" cmd /c "cd /d %~dp0zkteco-sync && (python sync.py 2>nul || py sync.py) & pause"
 
 timeout /t 5 /nobreak >nul
 
